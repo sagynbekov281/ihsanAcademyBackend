@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>IhsanAcademy — Админка</title>
+<style>
+  :root { --bg:#0B0D1A; --card:#111428; --border:#1E2448; --accent:#5B5BD6; --text:#fff; --muted:#7A82A8; }
+  * { box-sizing:border-box; }
+  body { margin:0; font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif; background:var(--bg); color:var(--text); padding:24px; }
+  .hidden { display:none !important; }
+  h1 { font-size:20px; margin:0; }
+  input, select, textarea, button { background:#0B0D1A; border:1px solid var(--border); color:var(--text); border-radius:8px; padding:8px 12px; font-size:13px; font-family:inherit; }
+  textarea { width:100%; resize:vertical; }
+  button { background:var(--accent); border:none; cursor:pointer; font-weight:600; }
+  button.secondary { background:transparent; border:1px solid var(--border); color:var(--muted); }
+  button.danger { background:#ef444433; color:#f87171; }
+  button.wa { background:#25D366; color:#062b12; }
+  button:hover { opacity:.85; }
+  .login { max-width:340px; margin:12vh auto; background:var(--card); border:1px solid var(--border); border-radius:14px; padding:28px; display:flex; flex-direction:column; gap:12px; }
+  .login h1 { margin-bottom:6px; }
+  .err { color:#f87171; font-size:13px; min-height:16px; }
+  header { display:flex; align-items:center; gap:16px; flex-wrap:wrap; margin-bottom:20px; }
+  .tabs { display:flex; gap:6px; flex:1; }
+  .tabs button { background:transparent; border:1px solid var(--border); color:var(--muted); }
+  .tabs button.on { background:var(--accent); color:#fff; border-color:var(--accent); }
+  .bar { display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-bottom:14px; }
+  .chk { display:flex; align-items:center; gap:8px; color:var(--muted); font-size:13px; cursor:pointer; }
+  table { width:100%; border-collapse:collapse; background:var(--card); border-radius:12px; overflow:hidden; font-size:13px; }
+  th, td { text-align:left; padding:10px 12px; border-bottom:1px solid var(--border); vertical-align:middle; }
+  th { color:var(--muted); font-size:11px; text-transform:uppercase; }
+  tr:last-child td { border-bottom:none; }
+  .badge { display:inline-block; padding:3px 8px; border-radius:999px; font-size:11px; font-weight:600; }
+  .badge.pending, .badge.off { background:#5B5BD622; color:#9B9FE8; }
+  .badge.approved, .badge.on { background:#22c55e22; color:#4ade80; }
+  .badge.rejected { background:#ef444422; color:#f87171; }
+  .badge.sale { background:#f59e0b22; color:#fbbf24; }
+  .actions { display:flex; gap:6px; flex-wrap:wrap; }
+  .actions button { padding:5px 9px; font-size:12px; }
+  s { color:var(--muted); }
+  #status { color:var(--muted); font-size:13px; margin-bottom:12px; }
+  .empty { padding:40px; text-align:center; color:var(--muted); }
+  .modal { position:fixed; inset:0; background:#04050Fcc; display:flex; align-items:flex-start; justify-content:center; padding:24px; overflow:auto; z-index:10; }
+  .box { background:var(--card); border:1px solid var(--border); border-radius:14px; padding:24px; width:100%; max-width:560px; }
+  .box h2 { margin:0 0 16px; font-size:17px; }
+  .box label { display:block; font-size:12px; color:var(--muted); margin-bottom:12px; }
+  .box label input:not([type=checkbox]), .box label select { width:100%; margin-top:4px; }
+  .box label textarea { margin-top:4px; }
+  .box label.chk { display:flex; color:var(--text); }
+  .row { display:flex; gap:8px; margin-top:8px; }
+</style>
+</head>
+<body>
+
+<div id="login" class="login hidden">
+  <h1>IhsanAcademy</h1>
+  <div style="color:var(--muted);font-size:13px">Вход в админ-панель</div>
+  <input id="pwd" type="password" placeholder="Пароль" autocomplete="current-password" />
+  <button id="loginBtn">Войти</button>
+  <div id="loginErr" class="err"></div>
+</div>
+
+<div id="app" class="hidden">
+  <header>
+    <h1>IhsanAcademy — Админка</h1>
+    <div class="tabs">
+      <button data-tab="applications">Заявки</button>
+      <button data-tab="courses">Курсы</button>
+      <button data-tab="teachers">Учителя</button>
+    </div>
+    <button class="secondary" id="logout">Выйти</button>
+  </header>
+  <div id="status"></div>
+  <div id="content"></div>
+</div>
+
+<div id="modal" class="modal hidden">
+  <div class="box">
+    <h2 id="mTitle"></h2>
+    <div id="mFields"></div>
+    <div id="mErr" class="err"></div>
+    <div class="row"><button id="mSave">Сохранить</button><button class="secondary" id="mCancel">Отмена</button></div>
+  </div>
+</div>
+
+<script>
+  const $ = (s) => document.querySelector(s);
+  const esc = (s) => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  const API = window.location.origin;
+  const ENDPOINT = { applications: '/api/applications', courses: '/api/admin/courses', teachers: '/api/admin/teachers' };
+  const STATUS = { pending: 'ожидает', approved: 'одобрена', rejected: 'отклонена' };
+  const LEVELS = [['beginner','Начальный'],['intermediate','Средний'],['advanced','Продвинутый']];
+  const ICONS = [['code','Код'],['react','React'],['database','База данных'],['brush','Дизайн'],['chart','Аналитика'],['shield','Безопасность'],['phone','Мобильная']];
+
+  // [ключ, подпись, тип, варианты]  типы: text, textarea, number, date, select, checkbox, list (через запятую), lines (с новой строки)
+  const SCHEMA = {
+    courses: { one: 'курс', fields: [
+      ['title','Название','text'],
+      ['description','Короткое описание (в списке)','textarea'],
+      ['about','Подробное описание (в окне курса)','textarea'],
+      ['duration','Длительность (например: 6 месяцев)','text'],
+      ['levelKey','Уровень','select',LEVELS],
+      ['iconKey','Иконка','select',ICONS],
+      ['price','Цена (сом)','number'],
+      ['discountPercent','Скидка, % (0 — нет скидки)','number'],
+      ['discountEndsAt','Скидка действует до (пусто — без срока)','date'],
+      ['topics','Программа (каждая тема с новой строки)','lines'],
+      ['langs','Технологии (через запятую)','list'],
+      ['students','Студентов','number'],
+      ['projects','Проектов','number'],
+      ['order','Порядок (меньше — выше)','number'],
+      ['active','Показывать на сайте','checkbox'],
+    ]},
+    teachers: { one: 'учителя', fields: [
+      ['name','Имя и фамилия','text'],
+      ['role','Должность','text'],
+      ['experience','Опыт (например: 5+ лет)','text'],
+      ['subjects','Предметы (через запятую)','list'],
+      ['bio','О себе','textarea'],
+      ['order','Порядок (меньше — выше)','number'],
+      ['active','Показывать на сайте','checkbox'],
+    ]},
+  };
+
+  let token = localStorage.getItem('ihsan_token') || '';
+  let tab = 'applications';
+  let editing = null;
+  const data = { applications: [], courses: [], teachers: [] };
+
+  async function api(path, opts = {}) {
+    const headers = { 'Content-Type': 'application/json' };
+    if (token) headers.Authorization = 'Bearer ' + token;
+    const res = await fetch(API + path, { ...opts, headers });
+    let body = {};
+    try { body = await res.json(); } catch (e) {}
+    if (res.status === 401 && path !== '/api/admin/login') { logout(); throw new Error('Сессия истекла, войдите снова'); }
+    if (!res.ok || body.success === false) throw new Error(body.error || (body.errors || []).join(', ') || 'Ошибка ' + res.status);
+    return body;
+  }
+
+  // ---- Вход / выход ----
+  async function doLogin() {
+    $('#loginErr').textContent = '';
+    try {
+      const r = await api('/api/admin/login', { method: 'POST', body: JSON.stringify({ password: $('#pwd').value }) });
+      token = r.token; localStorage.setItem('ihsan_token', token); $('#pwd').value = '';
+      start();
+    } catch (e) { $('#loginErr').textContent = e.message; }
+  }
+  function logout() {
+    token = ''; localStorage.removeItem('ihsan_token');
+    $('#app').classList.add('hidden'); $('#login').classList.remove('hidden');
+  }
+  function start() {
+    $('#login').classList.add('hidden'); $('#app').classList.remove('hidden');
+    load();
+  }
+  $('#loginBtn').addEventListener('click', doLogin);
+  $('#pwd').addEventListener('keydown', (e) => { if (e.key === 'Enter') doLogin(); });
+  $('#logout').addEventListener('click', logout);
+
+  // ---- Вкладки ----
+  document.querySelectorAll('[data-tab]').forEach((b) => b.addEventListener('click', () => { tab = b.dataset.tab; load(); }));
+
+  async function load() {
+    document.querySelectorAll('[data-tab]').forEach((b) => b.classList.toggle('on', b.dataset.tab === tab));
+    $('#status').textContent = 'Загрузка...'; $('#content').innerHTML = '';
+    try {
+      const r = await api(ENDPOINT[tab]);
+      data[tab] = r[tab] || [];
+      $('#status').textContent = '';
+      $('#content').innerHTML = tab === 'applications' ? renderApplications() : renderCatalog(tab);
+    } catch (e) { $('#status').textContent = e.message; }
+  }
+
+  const table = (heads, rows) => `<table><thead><tr>${heads.map((h) => `<th>${h}</th>`).join('')}</tr></thead><tbody>${rows}</tbody></table>`;
+
+  function renderApplications() {
+    const wa = localStorage.getItem('ihsan_my_wa') || '';
+    const openWa = localStorage.getItem('ihsan_open_wa') !== 'false';
+    const bar = `<div class="bar"><input id="myWa" placeholder="Ваш WhatsApp: 996XXXXXXXXX" value="${esc(wa)}" style="min-width:230px">
+      <label class="chk"><input type="checkbox" id="openWa" ${openWa ? 'checked' : ''}> При «Одобрить» открывать WhatsApp клиента</label></div>`;
+    if (!data.applications.length) return bar + '<div class="empty">Заявок пока нет</div>';
+    const rows = data.applications.map((a) => `<tr>
+      <td>${esc(a.name)}</td><td>+${esc(a.phone)}</td><td>${esc(a.course)}</td>
+      <td><span class="badge ${a.status}">${STATUS[a.status] || a.status}</span></td>
+      <td>${new Date(a.createdAt).toLocaleString('ru-RU')}</td>
+      <td class="actions">
+        <button data-act="approve" data-id="${a._id}">✅ Одобрить</button>
+        <button class="secondary" data-act="reject" data-id="${a._id}">❌</button>
+        <button class="wa" data-act="wa-client" data-id="${a._id}">💬 Клиенту</button>
+        <button class="secondary" data-act="wa-me" data-id="${a._id}">📤 Мне</button>
+      </td></tr>`).join('');
+    return bar + table(['Имя','Телефон','Курс','Статус','Дата',''], rows);
+  }
+
+  const money = (n) => Number(n).toLocaleString('ru-RU') + ' сом';
+
+  function renderCatalog(kind) {
+    const items = data[kind];
+    const add = `<div class="bar"><button data-act="add">＋ Добавить ${SCHEMA[kind].one}</button>
+      ${items.length ? '' : '<button class="secondary" data-act="seed">Загрузить примеры</button>'}</div>`;
+    if (!items.length) return add + '<div class="empty">Список пуст</div>';
+    const buttons = (i) => `<td class="actions"><button data-act="edit" data-id="${i._id}">✏️ Изменить</button><button class="danger" data-act="del" data-id="${i._id}">🗑 Удалить</button></td>`;
+    const shown = (i) => `<span class="badge ${i.active ? 'on' : 'off'}">${i.active ? 'на сайте' : 'скрыт'}</span>`;
+    if (kind === 'courses') {
+      const rows = items.map((c) => `<tr><td>${esc(c.title)}</td>
+        <td>${c.discountActive ? `<s>${money(c.price)}</s> ${money(c.finalPrice)}` : money(c.price)}</td>
+        <td>${c.discountActive ? `<span class="badge sale">-${c.discountPercent}%${c.discountEndsAt ? ' до ' + new Date(c.discountEndsAt).toLocaleDateString('ru-RU') : ''}</span>` : '—'}</td>
+        <td>${shown(c)}</td>${buttons(c)}</tr>`).join('');
+      return add + table(['Курс','Цена','Скидка','Статус',''], rows);
+    }
+    const rows = items.map((t) => `<tr><td>${esc(t.name)}</td><td>${esc(t.role)}</td><td>${esc((t.subjects || []).join(', '))}</td><td>${shown(t)}</td>${buttons(t)}</tr>`).join('');
+    return add + table(['Имя','Должность','Предметы','Статус',''], rows);
+  }
+
+  // ---- Клики в таблицах ----
+  $('#content').addEventListener('click', (e) => {
+    const b = e.target.closest('button[data-act]'); if (!b) return;
+    const { act, id } = b.dataset;
+    if (act === 'approve') return approve(id);
+    if (act === 'reject') return setStatus(id, 'reject');
+    if (act === 'wa-client') return waClient(id);
+    if (act === 'wa-me') return waMe(id);
+    if (act === 'add') return openForm(tab, null);
+    if (act === 'edit') return openForm(tab, data[tab].find((x) => x._id === id));
+    if (act === 'del') return removeItem(id);
+    if (act === 'seed') return seed();
+  });
+  $('#content').addEventListener('change', (e) => {
+    if (e.target.id === 'myWa') localStorage.setItem('ihsan_my_wa', e.target.value.trim());
+    if (e.target.id === 'openWa') localStorage.setItem('ihsan_open_wa', e.target.checked ? 'true' : 'false');
+  });
+
+  // ---- Заявки ----
+  const waLink = (phone, text) => 'https://wa.me/' + String(phone).replace(/\D/g, '') + '?text=' + encodeURIComponent(text);
+  const findApp = (id) => data.applications.find((x) => x._id === id);
+
+  async function approve(id) {
+    const a = findApp(id);
+    const win = localStorage.getItem('ihsan_open_wa') !== 'false' ? window.open('', '_blank') : null; // открываем до запроса
+    try {
+      const r = await api('/api/applications/' + id + '/status', { method: 'PATCH', body: JSON.stringify({ status: 'approved' }) });
+      if (win) win.location.href = waLink(a.phone, 'Здравствуйте, ' + a.name + '! Ваша заявка на курс «' + a.course + '» в IhsanAcademy одобрена. Мы свяжемся с вами, чтобы обсудить детали и начало занятий.');
+      if (r.sms && r.sms.attempted) alert(r.sms.ok ? 'SMS клиенту отправлена.\n' + String(r.sms.raw || '').slice(0, 300) : 'SMS клиенту НЕ отправилась:\n' + r.sms.error);
+      load();
+    } catch (err) { if (win) win.close(); alert(err.message); }
+  }
+  async function setStatus(id) {
+    try { await api('/api/applications/' + id + '/status', { method: 'PATCH', body: JSON.stringify({ status: 'rejected' }) }); load(); }
+    catch (err) { alert(err.message); }
+  }
+  function waClient(id) {
+    const a = findApp(id);
+    window.open(waLink(a.phone, 'Здравствуйте, ' + a.name + '! Это IhsanAcademy. Вы оставили заявку на курс «' + a.course + '». Когда вам удобно поговорить?'), '_blank');
+  }
+  function waMe(id) {
+    const me = (localStorage.getItem('ihsan_my_wa') || '').trim();
+    if (!me) return alert('Впишите свой номер WhatsApp в поле сверху');
+    const a = findApp(id);
+    window.open(waLink(me, 'Заявка IhsanAcademy\nИмя: ' + a.name + '\nТелефон: +' + a.phone + '\nКурс: ' + a.course + (a.message ? '\nСообщение: ' + a.message : '')), '_blank');
+  }
+
+  // ---- Курсы / учителя: форма ----
+  function fieldHtml([k, label, type, opts], v) {
+    const id = 'f_' + k;
+    if (type === 'textarea') return `<label>${label}<textarea id="${id}" rows="3">${esc(v)}</textarea></label>`;
+    if (type === 'lines') return `<label>${label}<textarea id="${id}" rows="5">${esc((v || []).join('\n'))}</textarea></label>`;
+    if (type === 'list') return `<label>${label}<input id="${id}" value="${esc((v || []).join(', '))}"></label>`;
+    if (type === 'select') return `<label>${label}<select id="${id}">${opts.map(([val, text]) => `<option value="${val}" ${val === v ? 'selected' : ''}>${text}</option>`).join('')}</select></label>`;
+    if (type === 'checkbox') return `<label class="chk"><input type="checkbox" id="${id}" ${v ? 'checked' : ''}> ${label}</label>`;
+    if (type === 'date') return `<label>${label}<input type="date" id="${id}" value="${v ? String(v).slice(0, 10) : ''}"></label>`;
+    return `<label>${label}<input type="${type}" id="${id}" value="${esc(v)}"></label>`;
+  }
+  function openForm(kind, item) {
+    editing = { kind, id: item ? item._id : null };
+    const base = item || { active: true, order: 0, price: 0, discountPercent: 0 };
+    $('#mTitle').textContent = (item ? 'Изменить ' : 'Добавить ') + SCHEMA[kind].one;
+    $('#mFields').innerHTML = SCHEMA[kind].fields.map((f) => fieldHtml(f, base[f[0]])).join('');
+    $('#mErr').textContent = '';
+    $('#modal').classList.remove('hidden');
+  }
+  const closeForm = () => $('#modal').classList.add('hidden');
+  $('#mCancel').addEventListener('click', closeForm);
+
+  $('#mSave').addEventListener('click', async () => {
+    const { kind, id } = editing;
+    const body = {};
+    SCHEMA[kind].fields.forEach(([k, , type]) => {
+      const el = $('#f_' + k);
+      if (type === 'checkbox') body[k] = el.checked;
+      else if (type === 'lines') body[k] = el.value.split('\n').map((s) => s.trim()).filter(Boolean);
+      else if (type === 'list') body[k] = el.value.split(/[,\n]/).map((s) => s.trim()).filter(Boolean);
+      else body[k] = el.value;
+    });
+    try {
+      await api(ENDPOINT[kind] + (id ? '/' + id : ''), { method: id ? 'PUT' : 'POST', body: JSON.stringify(body) });
+      closeForm(); load();
+    } catch (err) { $('#mErr').textContent = err.message; }
+  });
+
+  async function removeItem(id) {
+    if (!confirm('Удалить безвозвратно?')) return;
+    try { await api(ENDPOINT[tab] + '/' + id, { method: 'DELETE' }); load(); } catch (err) { alert(err.message); }
+  }
+  async function seed() {
+    try { await api('/api/admin/seed/' + tab, { method: 'POST' }); load(); } catch (err) { alert(err.message); }
+  }
+
+  if (token) start(); else $('#login').classList.remove('hidden');
+</script>
+</body>
+</html>
