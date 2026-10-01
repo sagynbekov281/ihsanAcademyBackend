@@ -73,6 +73,9 @@ function coursePublic(c) {
     price: c.price,
     finalPrice: d.finalPrice,
     discountPercent: d.active ? d.pct : 0,
+    discountEndsAt: d.active && c.discountEndsAt
+      ? c.discountEndsAt.toISOString().slice(0, 10)
+      : null,
   };
 }
 
@@ -120,6 +123,7 @@ function makeCrud({ Model, plural, single, fromBody, required, missingMsg, toAdm
   };
   return {
     listPublic: wrap(async (req, res) => {
+      res.set("Cache-Control", "no-store");
       const items = await Model.find({ active: true }).sort(sort);
       res.json({ success: true, [plural]: items.map(toPublic) });
     }),
