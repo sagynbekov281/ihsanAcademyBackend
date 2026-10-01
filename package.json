@@ -1,7 +1,7 @@
 {
   "name": "ihsan-academy-backend",
   "version": "1.0.0",
-  "description": "Backend для сайта IhsanAcademy: приём заявок на курсы, сохранение в MongoDB, отправка SMS-подтверждения",
+  "description": "Backend для сайта IhsanAcademy: приём заявок на курсы и сохранение в MongoDB",
   "main": "src/server.js",
   "type": "commonjs",
   "scripts": {

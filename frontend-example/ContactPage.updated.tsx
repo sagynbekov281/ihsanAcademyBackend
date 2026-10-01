@@ -91,7 +91,7 @@ export default function ContactPage() {
               <h2 className="font-display text-lg font-semibold text-white mb-6">{t('contact.formTitle')}</h2>
               {sent && (
                 <div className="mb-5 p-3.5 rounded-xl bg-[#5B5BD6]/15 border border-[#5B5BD6]/30 text-[#7B7FE8] text-sm">
-                  {t('contact.successMsg')} Мы отправили SMS-подтверждение на указанный номер.
+                  {t('contact.successMsg')} Заявка принята. Наш менеджер свяжется с вами в ближайшее время.
                 </div>
               )}
               {error && (

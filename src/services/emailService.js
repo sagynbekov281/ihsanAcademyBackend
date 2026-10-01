@@ -16,9 +16,6 @@ async function notifyManager(application) {
     <p><b>Телефон:</b> +${escapeHtml(application.phone)}</p>
     <p><b>Курс:</b> ${escapeHtml(application.course)}</p>
     ${application.message ? `<p><b>Сообщение:</b> ${escapeHtml(application.message)}</p>` : ""}
-    <p><b>Номер проверен по SMS-коду:</b> ${
-      application.phoneVerified ? "да ✅" : "нет (проверка по SMS отключена)"
-    }</p>
   `;
 
   const res = await fetch("https://api.resend.com/emails", {

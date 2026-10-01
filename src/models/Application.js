@@ -25,35 +25,15 @@ const applicationSchema = new mongoose.Schema(
       trim: true,
       maxlength: 120,
     },
+    language: {
+      type: String,
+      enum: ["ru", "ky"],
+      default: "ru",
+    },
     status: {
       type: String,
       enum: ["pending", "approved", "rejected"],
       default: "pending",
-    },
-    smsStatus: {
-      type: String,
-      enum: ["not_sent", "sent", "failed"],
-      default: "not_sent",
-    },
-    smsError: {
-      type: String,
-      default: null,
-    },
-    phoneVerified: {
-      type: Boolean,
-      default: false,
-    },
-    otpCode: {
-      type: String,
-      default: null,
-    },
-    otpExpiresAt: {
-      type: Date,
-      default: null,
-    },
-    otpAttempts: {
-      type: Number,
-      default: 0,
     },
     managerNotified: {
       type: Boolean,

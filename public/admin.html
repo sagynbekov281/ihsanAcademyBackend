@@ -377,7 +377,10 @@
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !$('#deleteModal').classList.contains('hidden')) closeDeleteDialog(); });
   function waClient(id) {
     const a = findApp(id);
-    window.open(waLink(a.phone, 'Здравствуйте, ' + a.name + '! Это IhsanAcademy. Вы оставили заявку на курс «' + a.course + '». Когда вам удобно поговорить?'), '_blank');
+    const message = a.language === 'ky'
+      ? `Саламатсызбы, ${a.name}! Бул IhsanAcademy академиясы. Сиз «${a.course}» курсуна катталуу үчүн өтүнмө калтырдыңыз. Сиз менен качан сүйлөшсөк ыңгайлуу?`
+      : `Здравствуйте, ${a.name}! Это IhsanAcademy. Вы оставили заявку на курс «${a.course}». Когда вам удобно поговорить?`;
+    window.open(waLink(a.phone, message), '_blank');
   }
   function waMe(id) {
     const me = (localStorage.getItem('ihsan_my_wa') || '').trim();

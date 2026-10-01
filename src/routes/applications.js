@@ -3,8 +3,6 @@ const rateLimit = require("express-rate-limit");
 const Application = require("../models/Application");
 const {
   createApplication,
-  verifyOtp,
-  resendOtp,
   listApplications,
   updateApplicationStatus,
 } = require("../controllers/applicationController");
@@ -20,22 +18,6 @@ const submitLimiter = rateLimit({
   message: { success: false, error: "Слишком много заявок. Попробуйте позже." },
 });
 
-const verifyLimiter = rateLimit({
-  windowMs: 10 * 60 * 1000,
-  max: 20,
-  standardHeaders: true,
-  legacyHeaders: false,
-  message: { success: false, error: "Слишком много попыток. Попробуйте позже." },
-});
-
-const resendLimiter = rateLimit({
-  windowMs: 10 * 60 * 1000,
-  max: 3,
-  standardHeaders: true,
-  legacyHeaders: false,
-  message: { success: false, error: "Слишком много повторных отправок. Попробуйте позже." },
-});
-
 async function deleteApplication(req, res) {
   try {
     const item = await Application.findByIdAndDelete(req.params.id);
@@ -49,8 +31,6 @@ async function deleteApplication(req, res) {
 }
 
 router.post("/", submitLimiter, validateApplication, createApplication);
-router.post("/:id/verify-otp", verifyLimiter, verifyOtp);
-router.post("/:id/resend-otp", resendLimiter, resendOtp);
 
 router.get("/", requireAdminKey, listApplications);
 router.patch("/:id/status", requireAdminKey, updateApplicationStatus);
