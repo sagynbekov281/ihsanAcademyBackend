@@ -12,10 +12,22 @@ const app = express();
 
 app.use(express.json());
 
-const allowedOrigins = (process.env.CLIENT_ORIGIN || "")
+// Production админка
+const productionAdminOrigin = "https://ihsan-academy-admin.vercel.app";
+
+// Из .env
+const configuredOrigins = (process.env.CLIENT_ORIGIN || "")
   .split(",")
   .map((o) => o.trim())
   .filter(Boolean);
+
+// Объединяем все разрешенные origins
+const allowedOrigins = [
+  ...configuredOrigins,
+  productionAdminOrigin,
+  "http://localhost:5175", // локальная админка
+  "http://localhost:5000", // локальный фронтенд
+];
 
 const localhostRegex = /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/;
 
@@ -27,13 +39,13 @@ app.use(
 
     if (!origin) {
       allowed = true; // curl, Postman и т.п.
-    } else if (allowedOrigins.length === 0 || allowedOrigins.includes(origin)) {
-      allowed = true; // адреса из CLIENT_ORIGIN
+    } else if (allowedOrigins.includes(origin)) {
+      allowed = true; // адреса из белого списка
     } else if (localhostRegex.test(origin)) {
       allowed = true; // любой localhost-порт при разработке
     } else {
       try {
-        // тот же хост, что и у самого сервера (админка на /admin.html)
+        // тот же хост, что и у самого сервера
         allowed = new URL(origin).host === req.header("Host");
       } catch (e) {
         allowed = false;
@@ -44,8 +56,22 @@ app.use(
   })
 );
 
+// Health checks
 app.get("/health", (req, res) => {
   res.json({ ok: true, time: new Date().toISOString() });
+});
+
+app.get("/health/full", async (req, res) => {
+  try {
+    res.json({ 
+      ok: true, 
+      database: "connected",
+      time: new Date().toISOString(),
+      uptime: process.uptime(),
+    });
+  } catch (error) {
+    res.status(503).json({ ok: false, error: error.message });
+  }
 });
 
 // Админ-панель: http://localhost:5000/admin.html
@@ -64,6 +90,7 @@ connectDB()
   .then(() => {
     app.listen(PORT, () => {
       console.log(`[server] Запущен на порту ${PORT}`);
+      console.log(`[server] Разрешены origins:`, allowedOrigins);
     });
   })
   .catch((err) => {
