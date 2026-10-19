@@ -12,28 +12,19 @@ const app = express();
 
 app.use(express.json());
 
-// Production админка
-const productionAdminOrigin = "https://ihsan-academy-admin.vercel.app";
-
-
-
-// Из .env
-const cors = require('cors');
-
+// Адреса, которым разрешено обращаться к API из браузера
 const allowedOrigins = [
-  'http://localhost:5173',
-  'https://ihsan-academy-ghf9.vercel.app',
+  "http://localhost:5173",
+  "https://ihsan-academy-ghf9.vercel.app", // сайт
+  "https://ihsan-academy-admin.vercel.app", // админка
+  // дополнительные адреса можно добавить в Render → Environment → CORS_ORIGINS (через запятую)
+  ...(process.env.CORS_ORIGINS || "")
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean),
 ];
 
-app.use(cors({
-  origin: (origin, callback) => {
-    const ok =
-      !origin ||
-      allowedOrigins.includes(origin) ||
-      /^https:\/\/ihsan-academy[a-z0-9-]*\.vercel\.app$/.test(origin);
-    callback(ok ? null : new Error('Not allowed by CORS'), ok);
-  },
-}));
+const localhostRegex = /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/;
 
 app.use(
   cors((req, callback) => {
