@@ -3,6 +3,12 @@ const mongoose = require("mongoose");
 const courseSchema = new mongoose.Schema(
   {
     title: { type: String, required: true, trim: true, maxlength: 120 },
+        // кыргызский вариант (автоперевод, можно править руками)
+    titleKy: { type: String, trim: true, maxlength: 200, default: "" },
+    descriptionKy: { type: String, trim: true, maxlength: 1400, default: "" },
+    aboutKy: { type: String, trim: true, maxlength: 4200, default: "" },
+    durationKy: { type: String, trim: true, maxlength: 100, default: "" },
+    topicsKy: { type: [String], default: [] },
     description: { type: String, trim: true, maxlength: 1000, default: "" },
     about: { type: String, trim: true, maxlength: 3000, default: "" },
     duration: { type: String, trim: true, maxlength: 60, default: "" },
