@@ -12,23 +12,38 @@ const app = express();
 
 app.use(express.json());
 
+// Приводим адрес к единому виду: без пробелов, без "/" на конце
+const clean = (s) => String(s || "").trim().replace(/\/+$/, "");
+
+// Адреса из переменных окружения Render (через запятую).
+// Читаются обе переменные: CORS_ORIGINS и CLIENT_ORIGIN.
+const fromEnv = [process.env.CORS_ORIGINS, process.env.CLIENT_ORIGIN]
+  .filter(Boolean)
+  .join(",")
+  .split(",")
+  .map(clean)
+  .filter(Boolean);
+
 // Адреса, которым разрешено обращаться к API из браузера
 const allowedOrigins = [
   "http://localhost:5173",
-  "https://ihsan-academy-ghf9.vercel.app", // сайт
-  "https://ihsan-academy-admin.vercel.app", // админка
-  // дополнительные адреса можно добавить в Render → Environment → CORS_ORIGINS (через запятую)
-  ...(process.env.CORS_ORIGINS || "")
-    .split(",")
-    .map((s) => s.trim())
-    .filter(Boolean),
-];
+  // основной домен сайта
+  "https://ihsan-academy.org.kg",
+  "https://www.ihsan-academy.org.kg",
+  // адреса на vercel.app
+  "https://ihsan-academy.vercel.app",
+  "https://ihsan-academy-ghf9.vercel.app",
+  // админка
+  "https://ihsan-academy-admin.vercel.app",
+  // всё, что добавлено в переменные окружения
+  ...fromEnv,
+].map(clean);
 
 const localhostRegex = /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/;
 
 app.use(
   cors((req, callback) => {
-    const origin = req.header("Origin");
+    const origin = clean(req.header("Origin"));
 
     let allowed = false;
 
@@ -58,8 +73,8 @@ app.get("/health", (req, res) => {
 
 app.get("/health/full", async (req, res) => {
   try {
-    res.json({ 
-      ok: true, 
+    res.json({
+      ok: true,
       database: "connected",
       time: new Date().toISOString(),
       uptime: process.uptime(),
